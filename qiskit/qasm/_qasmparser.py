@@ -18,6 +18,7 @@ import sympy
 from . import _node as node
 from ._qasmerror import QasmError
 from ._qasmlexer import QasmLexer
+from ._qasmnumber import qasm_number
 
 
 class QasmParser(object):
@@ -931,7 +932,7 @@ class QasmParser(object):
         """
            unary : REAL
         """
-        program[0] = node.Real(sympy.Number(program[1]))
+        program[0] = node.Real(qasm_number(program[1]))
 
     def p_unary_2(self, program):
         """
