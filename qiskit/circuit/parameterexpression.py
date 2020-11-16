@@ -18,6 +18,7 @@ import numbers
 import operator
 
 import numpy
+import sympy
 
 from qiskit.circuit.exceptions import CircuitError
 
@@ -27,7 +28,7 @@ ParameterValueType = Union['ParameterExpression', float, int]
 class ParameterExpression:
     """ParameterExpression class to enable creating expressions of Parameters."""
 
-    __slots__ = ['_parameter_symbols', '_parameters', '_symbol_expr', '_names']
+    __slots__ = ['_parameter_symbols', '_parameters', '_symbol_expr', '_lambda_expr', '_names']
 
     def __init__(self, symbol_map: Dict, expr):
         """Create a new :class:`ParameterExpression`.
@@ -44,6 +45,10 @@ class ParameterExpression:
         self._parameter_symbols = symbol_map
         self._parameters = set(self._parameter_symbols)
         self._symbol_expr = expr
+        if isinstance(expr, sympy.Symbol) and len(expr.free_symbols) == 1:
+            self._lambda_expr = sympy.lambdify(expr.free_symbols, expr)
+        else:
+            self._lambda_expr = None
         self._names = None
 
     @property
@@ -95,7 +100,12 @@ class ParameterExpression:
 
         symbol_values = {self._parameter_symbols[parameter]: value
                          for parameter, value in parameter_values.items()}
-        bound_symbol_expr = self._symbol_expr.subs(symbol_values)
+
+        if self._symbol_expr.free_symbols == set(symbol_values.keys()):
+            val = list(parameter_values.values())[0]
+            bound_symbol_expr = self._lambda_expr(val)
+        else:
+            bound_symbol_expr = self._symbol_expr.subs(symbol_values)
 
         # Don't use sympy.free_symbols to count remaining parameters here.
         # sympy will in some cases reduce the expression and remove even
@@ -106,7 +116,7 @@ class ParameterExpression:
         free_parameter_symbols = {p: s for p, s in self._parameter_symbols.items()
                                   if p in free_parameters}
 
-        if bound_symbol_expr.is_infinite:
+        if isinstance(bound_symbol_expr, sympy.Symbol) and bound_symbol_expr.is_infinite:
             raise ZeroDivisionError('Binding provided for expression '
                                     'results in division by zero '
                                     '(Expression: {}, Bindings: {}).'.format(
