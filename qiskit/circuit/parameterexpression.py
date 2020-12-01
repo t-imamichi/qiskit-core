@@ -46,7 +46,7 @@ class ParameterExpression:
         self._parameters = set(self._parameter_symbols)
         self._symbol_expr = expr
         if isinstance(expr, sympy.Symbol) and len(expr.free_symbols) == 1:
-            self._lambda_expr = sympy.lambdify(expr.free_symbols, expr)
+            self._lambda_expr = sympy.lambdify(list(expr.free_symbols), expr)
         else:
             self._lambda_expr = None
         self._names = None
